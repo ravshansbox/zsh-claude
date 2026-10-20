@@ -1,6 +1,6 @@
 # zsh-claude
 
-A zsh plugin that lets you talk to [Claude Code](https://code.claude.com) straight from your shell prompt.
+A zsh plugin that turns a description into a shell command with [Claude Code](https://code.claude.com), straight from your shell prompt.
 
 ## Requirements
 
@@ -60,21 +60,15 @@ git -C ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-claude pull
 
 ## Usage
 
-Start a line with `: ` (a colon and a space) to send a prompt to Claude:
+Start a line with `: ` (a colon and a space) to turn a description into a shell command:
 
 ```zsh
-: what does this project do?
-```
-
-Each prompt runs on its own and is not saved, so Claude does not remember earlier prompts. Prompts are not saved to your shell history either.
-
-Start a line with `:: ` (two colons and a space) to turn a description into a shell command:
-
-```zsh
-:: find files over 100MB
+: find files over 100MB
 ```
 
 Your line stays on screen and the command appears in a new prompt below it, so you can check it before you press Enter to run it. Claude is told your OS, shell and current directory.
+
+Each request runs on its own and is not saved, so Claude does not remember earlier requests. Requests are not saved to your shell history either.
 
 Pick a model from a list:
 

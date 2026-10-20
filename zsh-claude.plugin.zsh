@@ -22,38 +22,28 @@ function _zsh_claude_ask() {
     claude "${args[@]}" -- "$1"
 }
 
-function _zsh_claude_dispatch() {
-    local line="$1"
-
-    case "$line" in
-        :model) :model ;;
-        :effort) :effort ;;
-        ": "*) _zsh_claude_ask "${line#: }" ;;
-    esac
-}
-
 function zsh-claude-accept-line() {
-    if [[ "$BUFFER" == ":: "?* ]]; then
-        local command
-        echo
-        command="$(_zsh_claude_ask "Reply with only one shell command, no explanation or code fences. OS: $(uname -s). Shell: zsh. Directory: $PWD. Task: ${BUFFER#:: }" </dev/null)"
-        zle -I
-        BUFFER="$command"
-        CURSOR=$#BUFFER
-        zle reset-prompt
-        return
-    fi
-
-    if [[ "$BUFFER" != (:model|:effort|": "?*) ]]; then
-        zle accept-line
-        return
-    fi
-
-    echo
-    _zsh_claude_dispatch "$BUFFER" </dev/tty >/dev/tty
-    BUFFER=""
-    zle -I
-    zle reset-prompt
+    case "$BUFFER" in
+        :model|:effort)
+            echo
+            $BUFFER </dev/tty >/dev/tty
+            BUFFER=""
+            zle -I
+            zle reset-prompt
+            ;;
+        ": "?*)
+            local command
+            echo
+            command="$(_zsh_claude_ask "Reply with only one shell command, no explanation or code fences. OS: $(uname -s). Shell: zsh. Directory: $PWD. Task: ${BUFFER#: }" </dev/null)"
+            zle -I
+            BUFFER="$command"
+            CURSOR=$#BUFFER
+            zle reset-prompt
+            ;;
+        *)
+            zle accept-line
+            ;;
+    esac
 }
 
 zle -N zsh-claude-accept-line

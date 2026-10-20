@@ -37,45 +37,43 @@ function assert_eq() {
 
 function calls() { cat "$calls_file" 2>/dev/null }
 
-: > "$calls_file"
-_zsh_claude_dispatch ": hello world"
-assert_eq "prompt runs claude without saving a session" "$(calls)" "-p --no-session-persistence -- hello world"
-
-FZF_PICK=opus _zsh_claude_dispatch ":model"
-assert_eq "models are listed from smallest to largest" "$(print -r -- ${(f)"$(<$tmp_dir/fzf_items)"})" "claude-haiku-5-5 claude-sonnet-5-5 claude-opus-5-5 claude-fable-5-1"
-FZF_PICK=xhigh _zsh_claude_dispatch ":effort"
-: > "$calls_file"
-_zsh_claude_dispatch ": hello"
-assert_eq "prompt uses the chosen model and effort" "$(calls)" "-p --no-session-persistence --model claude-opus-5-5 --effort xhigh -- hello"
-
-assert_eq "lists show in the given order from the top" "$(cat "$tmp_dir/fzf_args")" "--layout=reverse --prompt=effort> "
-
-FZF_PICK= _zsh_claude_dispatch ":model"
-FZF_PICK= _zsh_claude_dispatch ":effort"
-: > "$calls_file"
-_zsh_claude_dispatch ": hello"
-assert_eq "cancelling a list keeps the previous choice" "$(calls)" "-p --no-session-persistence --model claude-opus-5-5 --effort xhigh -- hello"
-
 typeset -g zle_calls=""
 function zle() { zle_calls+="$1 " }
 
+function generate() {
+    zle_calls=""
+    : > "$calls_file"
+    BUFFER=": $1"
+    CLAUDE_REPLY="ls -la" zsh-claude-accept-line >/dev/null
+}
+
+typeset -g task="Reply with only one shell command, no explanation or code fences. OS: $(uname -s). Shell: zsh. Directory: $PWD. Task:"
+
+generate "list files"
+assert_eq "command request puts the command in a new prompt" "$BUFFER" "ls -la"
+assert_eq "command request keeps the line on screen and does not run it" "$zle_calls" "-I reset-prompt "
+assert_eq "command request sends OS, shell and directory without saving a session" "$(calls)" "-p --no-session-persistence -- $task list files"
+
+FZF_PICK=opus :model
+assert_eq "models are listed from smallest to largest" "$(print -r -- ${(f)"$(<$tmp_dir/fzf_items)"})" "claude-haiku-5-5 claude-sonnet-5-5 claude-opus-5-5 claude-fable-5-1"
+FZF_PICK=xhigh :effort
+assert_eq "lists show in the given order from the top" "$(cat "$tmp_dir/fzf_args")" "--layout=reverse --prompt=effort> "
+generate "list files"
+assert_eq "command request uses the chosen model and effort" "$(calls)" "-p --no-session-persistence --model claude-opus-5-5 --effort xhigh -- $task list files"
+
+FZF_PICK= :model
+FZF_PICK= :effort
+generate "list files"
+assert_eq "cancelling a list keeps the previous choice" "$(calls)" "-p --no-session-persistence --model claude-opus-5-5 --effort xhigh -- $task list files"
+
 HISTSIZE=100
-BUFFER=": secret prompt"
-zsh-claude-accept-line >/dev/null 2>&1
-assert_eq "prompt is not saved to history" "$(fc -ln 1 2>/dev/null)" ""
+generate "secret task"
+assert_eq "command request is not saved to history" "$(fc -ln 1 2>/dev/null)" ""
 
 zle_calls=""
 BUFFER=":foo"
 zsh-claude-accept-line
 assert_eq "other colon lines run as shell commands" "$zle_calls" "accept-line "
-
-zle_calls=""
-: > "$calls_file"
-BUFFER=":: list files"
-CLAUDE_REPLY="ls -la" zsh-claude-accept-line
-assert_eq "command request puts the command in a new prompt" "$BUFFER" "ls -la"
-assert_eq "command request keeps the line on screen and does not run it" "$zle_calls" "-I reset-prompt "
-assert_eq "command request sends OS, shell and directory" "$(calls)" "-p --no-session-persistence --model claude-opus-5-5 --effort xhigh -- Reply with only one shell command, no explanation or code fences. OS: $(uname -s). Shell: zsh. Directory: $PWD. Task: list files"
 
 unfunction zle
 
